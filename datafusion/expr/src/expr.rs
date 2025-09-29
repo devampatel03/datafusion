@@ -3114,76 +3114,7 @@ impl Display for SchemaDisplay<'_> {
             }
             Expr::WindowFunction(window_fun) => {
                 let WindowFunction { fun, params } = window_fun.as_ref();
-                match fun {
-                    WindowFunctionDefinition::AggregateUDF(fun) => {
-                        match fun.window_function_schema_name(params) {
-                            Ok(name) => {
-                                write!(f, "{name}")
-                            }
-                            Err(e) => {
-                                write!(
-                                    f,
-                                    "got error from window_function_schema_name {e}"
-                                )
-                            }
-                        }
-                    }
-                    _ => {
-                        let WindowFunctionParams {
-                            args,
-                            partition_by,
-                            order_by,
-                            window_frame,
-                            filter,
-                            null_treatment,
-                            distinct,
-                        } = params;
-
-                        // Write function name and open parenthesis
-                        write!(f, "{fun}(")?;
-
-                        // If DISTINCT, emit the keyword
-                        if *distinct {
-                            write!(f, "DISTINCT ")?;
-                        }
-
-                        // Write the comma‑separated argument list
-                        write!(
-                            f,
-                            "{}",
-                            schema_name_from_exprs_comma_separated_without_space(args)?
-                        )?;
-
-                        // **Close the argument parenthesis**
-                        write!(f, ")")?;
-
-                        if let Some(null_treatment) = null_treatment {
-                            write!(f, " {null_treatment}")?;
-                        }
-
-                        if let Some(filter) = filter {
-                            write!(f, " FILTER (WHERE {filter})")?;
-                        }
-
-                        if !partition_by.is_empty() {
-                            write!(
-                                f,
-                                " PARTITION BY [{}]",
-                                schema_name_from_exprs(partition_by)?
-                            )?;
-                        }
-
-                        if !order_by.is_empty() {
-                            write!(
-                                f,
-                                " ORDER BY [{}]",
-                                schema_name_from_sorts(order_by)?
-                            )?;
-                        };
-
-                        write!(f, " {window_frame}")
-                    }
-                }
+                fmt_function(f, fun.name(), params.distinct, &params.args, true)
             }
         }
     }
@@ -3522,56 +3453,7 @@ impl Display for Expr {
             }
             Expr::WindowFunction(window_fun) => {
                 let WindowFunction { fun, params } = window_fun.as_ref();
-                match fun {
-                    WindowFunctionDefinition::AggregateUDF(fun) => {
-                        match fun.window_function_display_name(params) {
-                            Ok(name) => {
-                                write!(f, "{name}")
-                            }
-                            Err(e) => {
-                                write!(
-                                    f,
-                                    "got error from window_function_display_name {e}"
-                                )
-                            }
-                        }
-                    }
-                    WindowFunctionDefinition::WindowUDF(fun) => {
-                        let WindowFunctionParams {
-                            args,
-                            partition_by,
-                            order_by,
-                            window_frame,
-                            filter,
-                            null_treatment,
-                            distinct,
-                        } = params;
-
-                        fmt_function(f, &fun.to_string(), *distinct, args, true)?;
-
-                        if let Some(nt) = null_treatment {
-                            write!(f, "{nt}")?;
-                        }
-
-                        if let Some(fe) = filter {
-                            write!(f, " FILTER (WHERE {fe})")?;
-                        }
-
-                        if !partition_by.is_empty() {
-                            write!(f, " PARTITION BY [{}]", expr_vec_fmt!(partition_by))?;
-                        }
-                        if !order_by.is_empty() {
-                            write!(f, " ORDER BY [{}]", expr_vec_fmt!(order_by))?;
-                        }
-                        write!(
-                            f,
-                            " {} BETWEEN {} AND {}",
-                            window_frame.units,
-                            window_frame.start_bound,
-                            window_frame.end_bound
-                        )
-                    }
-                }
+                fmt_function(f, fun.name(), params.distinct, &params.args, true)
             }
             Expr::AggregateFunction(AggregateFunction { func, params }) => {
                 match func.display_name(params) {
